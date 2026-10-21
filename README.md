@@ -255,11 +255,11 @@ The following test suite outlines the verified and expected functional behaviors
 | **T02** | Idle (`Y0=0, Y1=0`) | Press Forward Start (`X1 = 1`) | `Y0 = 1`, `Y1 = 0` | Forward coil energizes immediately |
 | **T03** | Forward Running (`Y0=1`) | Release Forward Start (`X1 = 0`) | `Y0 = 1`, `Y1 = 0` | Output remains energized via `Y0` seal-in |
 | **T04** | Forward Running (`Y0=1`) | Press Reverse Start (`X3 = 1`) | `Y0 = 1`, `Y1 = 0` | Reverse command remains **BLOCKED** by `ANI Y0` |
-| **T05** | Forward Running (`Y0=1`) | Press Forward Stop (`X0`) | `Y0 = 0`, `Y1 = 0` | Forward coil de-energizes; latch drops out |
+| **T05** | Forward Running (`Y0=1`) | Press Forward Stop (`X0` NC opens) | `Y0 = 0`, `Y1 = 0` | Forward coil de-energizes; latch drops out |
 | **T06** | Idle (`Y0=0, Y1=0`) | Press Reverse Start (`X3 = 1`) | `Y0 = 0`, `Y1 = 1` | Reverse coil energizes immediately |
 | **T07** | Reverse Running (`Y1=1`) | Release Reverse Start (`X3 = 0`) | `Y0 = 0`, `Y1 = 1` | Output remains energized via `Y1` seal-in |
 | **T08** | Reverse Running (`Y1=1`) | Press Forward Start (`X1 = 1`) | `Y0 = 0`, `Y1 = 1` | Forward command remains **BLOCKED** by `ANI Y1` |
-| **T09** | Reverse Running (`Y1=1`) | Press Reverse Stop (`X2`) | `Y0 = 0`, `Y1 = 0` | Reverse coil de-energizes; latch drops out |
+| **T09** | Reverse Running (`Y1=1`) | Press Reverse Stop (`X2` NC opens) | `Y0 = 0`, `Y1 = 0` | Reverse coil de-energizes; latch drops out |
 | **T10** | Running (Either state) | Stop contact opens | Active output drops to `0` | Fail-safe circuit interruption |
 
 ---
