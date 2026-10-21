@@ -15,6 +15,7 @@ extracted_docx/
 scratch/
 *.bak
 plc capstone project.docx
+documentation/
 
 # Log files
 *.log

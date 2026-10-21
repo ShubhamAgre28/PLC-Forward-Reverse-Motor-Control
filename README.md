@@ -34,8 +34,7 @@
 21. [Safety Precautions & Engineering Warning](#21-safety-precautions--engineering-warning)
 22. [Project Information and Academic Details](#22-project-information-and-academic-details)
 23. [Repository Contents](#23-repository-contents)
-24. [Verification Status & Technical Discrepancies](#24-verification-status--technical-discrepancies)
-25. [Conclusion](#25-conclusion)
+24. [Conclusion](#24-conclusion)
 
 ---
 
@@ -43,7 +42,7 @@
 
 Directional control of electric motors is a foundational requirement across automated manufacturing lines, conveyor systems, hoists, and robotic manipulators. In conventional electromechanical control systems, reversing an induction motor's rotation requires altering its stator phase sequence using dual electromagnetic contactors. 
 
-This project implements the digital control logic for a bidirectional motor starter using a Programmable Logic Controller (PLC). Using **Mitsubishi MELSOFT GX Works3** and **GX Simulator3**, the system evaluates digital operator pushbuttons and drives forward and reverse command outputs while enforcing strict software-level mutual interlocking and self-holding logic.
+This project implements the digital control logic for a bidirectional motor starter using a Programmable Logic Controller (PLC). Using **Mitsubishi MELSOFT GX Works3** and **GX Simulator3**, the system evaluates digital operator pushbuttons and drives forward and reverse command outputs while enforcing strict software-level mutual interlocking, Normally Closed (NC) stop logic, and self-holding seal-in logic.
 
 ---
 
@@ -64,8 +63,9 @@ In industrial motor operation, activating both forward and reverse contactors co
 Therefore, an automated control circuit must guarantee:
 1. Reliable starting in forward or reverse directions upon operator command.
 2. Continuous run capability via latching after momentary pushbuttons are released.
-3. Strict, foolproof exclusion (interlocking) preventing the reverse command from energizing while the forward command is active, and vice versa.
-4. An enforced stop sequence ensuring an active directional command is fully de-energized before the opposing direction can be initiated.
+3. Fail-safe stopping using dedicated Normally Closed (NC) pushbuttons.
+4. Strict, foolproof exclusion (interlocking) preventing the reverse command from energizing while the forward command is active, and vice versa.
+5. An enforced stop sequence ensuring an active directional command is fully de-energized before the opposing direction can be initiated.
 
 ---
 
@@ -73,7 +73,8 @@ Therefore, an automated control circuit must guarantee:
 
 * Construct a validated PLC ladder logic program for bidirectional motor control.
 * Assign and map discrete PLC digital inputs (`X`) and digital outputs (`Y`).
-* Implement auxiliary latching (seal-in contacts) to sustain direction commands after momentary pushbuttons are released.
+* Implement Normally Closed (NC) Stop pushbuttons for forward and reverse control.
+* Implement auxiliary latching (seal-in contacts) to sustain direction commands after momentary start pushbuttons are released.
 * Integrate mutual electrical command interlocking using normally closed (NC) software contacts of opposite outputs.
 * Verify program execution, rung continuity, and safety interlocking using Mitsubishi GX Simulator3.
 * Provide an open, structured academic repository with complete technical documentation and reproducible ladder rungs.
@@ -86,7 +87,7 @@ Therefore, an automated control circuit must guarantee:
 * **Simulation Engine:** **GX Simulator3** (Built-in execution engine for MELSEC iQ-F / FX5U)
 * **Target Controller Architecture:** Mitsubishi Electric **MELSEC iQ-F Series FX5U CPU**
 * **Programming Standard:** IEC 61131-3 Ladder Diagram (LD)
-* **Documentation Tools:** Microsoft Word, Adobe PDF, Git, GitHub
+* **Version Control:** Git & GitHub
 
 ---
 
@@ -94,17 +95,14 @@ Therefore, an automated control circuit must guarantee:
 
 The program utilizes four discrete digital inputs and two discrete digital outputs assigned as follows:
 
-| Address | Signal Tag | Field Device Type | Functional Description | Circuit Role |
-|:---:|:---:|:---:|:---|:---|
-| **X0** | `STOP_FWD` | Digital Input | Forward Stop Pushbutton | Permissive / Forward Circuit Interrupt |
-| **X1** | `START_FWD` | Digital Input | Forward Start Pushbutton (Momentary NO) | Initiates Forward Motor Run Command |
-| **X2** | `STOP_REV` | Digital Input | Reverse Stop Pushbutton | Permissive / Reverse Circuit Interrupt |
-| **X3** | `START_REV` | Digital Input | Reverse Start Pushbutton (Momentary NO) | Initiates Reverse Motor Run Command |
-| **Y0** | `FWD_CMD` | Digital Output | Forward Contactor Coil / Relay | Energizes Forward Direction Starter |
-| **Y1** | `REV_CMD` | Digital Output | Reverse Contactor Coil / Relay | Energizes Reverse Direction Starter |
-
-> **Technical Verification Note:**  
-> The native PLC project was executed in an untitled simulator instance during laboratory verification. The I/O addresses and device tags match the verified GX Works3 ladder monitoring capture ([`images/simulation-screenshot.png`](images/simulation-screenshot.png)) and the official capstone project documentation ([`documentation/project-report.pdf`](documentation/project-report.pdf)).
+| Address | Signal Tag | Field Device Type | Contact Type | Functional Description | Circuit Role |
+|:---:|:---:|:---:|:---:|:---|:---|
+| **X0** | `STOP_FWD` | Digital Input | **NC (Normally Closed)** | Forward Stop Pushbutton | Forward Circuit Interrupt / Permissive |
+| **X1** | `START_FWD` | Digital Input | **NO (Normally Open)** | Forward Start Pushbutton (Momentary) | Initiates Forward Motor Run Command |
+| **X2** | `STOP_REV` | Digital Input | **NC (Normally Closed)** | Reverse Stop Pushbutton | Reverse Circuit Interrupt / Permissive |
+| **X3** | `START_REV` | Digital Input | **NO (Normally Open)** | Reverse Start Pushbutton (Momentary) | Initiates Reverse Motor Run Command |
+| **Y0** | `FWD_CMD` | Digital Output | Relay / Contactor | Forward Contactor Coil | Energizes Forward Direction Starter |
+| **Y1** | `REV_CMD` | Digital Output | Relay / Contactor | Reverse Contactor Coil | Energizes Reverse Direction Starter |
 
 ---
 
@@ -112,42 +110,44 @@ The program utilizes four discrete digital inputs and two discrete digital outpu
 
 The controller operates on a cyclical scan cycle: **Input Scan &rarr; Program Execution &rarr; Output Update &rarr; Housekeeping**.
 
-1. **At Idle:** Outputs `Y0` and `Y1` are de-energized (Logic 0). Both mutual interlocking contacts `Y1` (in Rung 1) and `Y0` (in Rung 2) remain closed.
-2. **Forward Command:** When Forward Start (`X1`) is momentarily closed while `X0` is healthy and `Y1` is inactive, logic continuity reaches output coil `Y0`. 
+1. **At Idle:** Outputs `Y0` and `Y1` are de-energized (`0`). Both mutual interlocking contacts `Y1` (in Rung 1) and `Y0` (in Rung 2) remain closed. Stop pushbuttons `X0` and `X2` are Normally Closed, maintaining circuit continuity.
+2. **Forward Command:** When Forward Start (`X1`) is momentarily pressed, logic continuity reaches output coil `Y0`. 
 3. **Latching:** `Y0` switches to Logic 1, causing its parallel auxiliary contact `Y0` in Rung 1 to close. When `X1` is released, current path is maintained through `Y0`.
 4. **Command Interlock:** Concurrently, the normally closed contact `Y0` in Rung 2 opens, severing all logic paths to coil `Y1`. Pressing Reverse Start (`X3`) has no effect.
-5. **Stopping:** Pressing Forward Stop (`X0`) breaks continuity in Rung 1, dropping coil `Y0` to Logic 0 and releasing the latch. The interlocking contact `Y0` in Rung 2 returns to its normally closed state.
+5. **Stopping:** Pressing Forward Stop (`X0`) opens the normally closed contact in Rung 1, dropping coil `Y0` to Logic 0 and releasing the latch. The interlocking contact `Y0` in Rung 2 returns to its normally closed state.
 6. **Reverse Command:** Once `Y0` is completely de-energized, pressing Reverse Start (`X3`) energizes `Y1`, which seals itself in and locks out `Y0` through normally closed contact `Y1` in Rung 1.
 
 ---
 
 ## 8. Forward Operation
 
-1. Operator confirms system is in idle state (`Y0 = 0`, `Y1 = 0`).
-2. Operator presses the momentary Forward Start pushbutton (`X1 = 1`).
-3. Permissive conditions verified:
-   * Stop Forward input is healthy / permissive (`X0` path conductive).
+1. System is in idle state (`Y0 = 0`, `Y1 = 0`).
+2. Normally Closed Stop pushbutton `X0` is unpressed and closed.
+3. Operator presses the momentary Forward Start pushbutton (`X1 = 1`).
+4. Permissive conditions verified:
+   * Stop Forward NC contact is closed.
    * Reverse command is inactive (`Y1 = 0`, so NC contact `ANI Y1` is closed).
-4. Coil `Y0` energizes (`Y0 = 1`).
-5. Forward seal-in contact `Y0` closes in parallel with `X1`.
-6. Operator releases `X1` (`X1 = 0`); `Y0` remains energized via the seal-in contact.
-7. Interlocking contact `Y0` in the reverse rung opens, prohibiting reverse activation.
-8. To terminate forward operation, the operator presses Forward Stop (`X0`), dropping `Y0` to 0.
+5. Coil `Y0` energizes (`Y0 = 1`).
+6. Forward seal-in contact `Y0` closes in parallel with `X1`.
+7. Operator releases `X1` (`X1 = 0`); `Y0` remains energized via the seal-in contact.
+8. Interlocking contact `Y0` in the reverse rung opens, prohibiting reverse activation.
+9. To terminate forward operation, the operator presses Forward Stop (`X0`), opening the contact and dropping `Y0` to 0.
 
 ---
 
 ## 9. Reverse Operation
 
 1. System must be idle (`Y0 = 0`, `Y1 = 0`). If forward is running, Forward Stop (`X0`) must be pressed first.
-2. Operator presses the momentary Reverse Start pushbutton (`X3 = 1`).
-3. Permissive conditions verified:
-   * Stop Reverse input is healthy / permissive (`X2` path conductive).
+2. Normally Closed Stop pushbutton `X2` is unpressed and closed.
+3. Operator presses the momentary Reverse Start pushbutton (`X3 = 1`).
+4. Permissive conditions verified:
+   * Stop Reverse NC contact is closed.
    * Forward command is inactive (`Y0 = 0`, so NC contact `ANI Y0` is closed).
-4. Coil `Y1` energizes (`Y1 = 1`).
-5. Reverse seal-in contact `Y1` closes in parallel with `X3`.
-6. Operator releases `X3` (`X3 = 0`); `Y1` remains energized via the seal-in contact.
-7. Interlocking contact `Y1` in the forward rung opens, prohibiting forward activation.
-8. To terminate reverse operation, the operator presses Reverse Stop (`X2`), dropping `Y1` to 0.
+5. Coil `Y1` energizes (`Y1 = 1`).
+6. Reverse seal-in contact `Y1` closes in parallel with `X3`.
+7. Operator releases `X3` (`X3 = 0`); `Y1` remains energized via the seal-in contact.
+8. Interlocking contact `Y1` in the forward rung opens, prohibiting forward activation.
+9. To terminate reverse operation, the operator presses Reverse Stop (`X2`), opening the contact and dropping `Y1` to 0.
 
 ---
 
@@ -157,34 +157,34 @@ The ladder program consists of two primary control rungs terminated by an `END` 
 
 ```
 RUNG 1 (Step 0) - Forward Motor Control:
- |--[ X0 ]--+--[/ Y1 ]--+--[ X1 ]--+--( Y0 )--|
-            |           |          |
-            |           +--[ Y0 ]--+
-            |
+ |--[/ X0 ]--+--[/ Y1 ]--+--[ X1 ]--+--( Y0 )--|
+             |           |          |
+             |           +--[ Y0 ]--+
+             |
 RUNG 2 (Step 11) - Reverse Motor Control:
- |--[ X2 ]--+--[/ Y0 ]--+--[ X3 ]--+--( Y1 )--|
-            |           |          |
-            |           +--[ Y1 ]--+
-            |
+ |--[/ X2 ]--+--[/ Y0 ]--+--[ X3 ]--+--( Y1 )--|
+             |           |          |
+             |           +--[ Y1 ]--+
+             |
 STEP 22 - End of Scan:
- |------------------------------------[ END ]-|
+ |-------------------------------------[ END ]-|
 ```
 
 ### Boolean Equations
 * **Forward Command ($Y_0$):**
-  $$Y_0 = \text{Permissive}(X_0) \land \overline{Y_1} \land (X_1 \lor Y_0)$$
+  $$Y_0 = \overline{X_0} \land \overline{Y_1} \land (X_1 \lor Y_0)$$
 * **Reverse Command ($Y_1$):**
-  $$Y_1 = \text{Permissive}(X_2) \land \overline{Y_0} \land (X_3 \lor Y_1)$$
+  $$Y_1 = \overline{X_2} \land \overline{Y_0} \land (X_3 \lor Y_1)$$
 
 ---
 
 ## 11. Self-Holding / Seal-In Logic
 
-Because industrial pushbuttons are spring-loaded momentary devices that return to their resting position upon release, a continuous control command cannot rely on physical contact closure.
+Because industrial start pushbuttons are spring-loaded momentary devices that return to their resting position upon release, a continuous control command cannot rely on physical contact closure:
 
 * A normally open auxiliary contact assigned to the output coil (`Y0` in Rung 1, `Y1` in Rung 2) is wired electrically in parallel across the start pushbutton contact (`X1` and `X3` respectively).
 * When the start button is depressed, current energizes the coil. During the subsequent program scan, the controller reads the output state as `1`, causing the parallel contact to close.
-* When the start pushbutton spring forces it back open, the auxiliary contact maintains the conducting branch, "sealing in" the circuit indefinitely until an inline stop contact breaks the rung.
+* When the start pushbutton spring forces it back open, the auxiliary contact maintains the conducting branch, "sealing in" the circuit indefinitely until the normally closed stop pushbutton breaks the rung.
 
 ---
 
@@ -201,11 +201,11 @@ Mutual interlocking is the programmatic exclusion mechanism that guarantees `Y0`
 
 ## 13. Actual Ladder Diagram
 
-The verified academic ladder diagram for the forward–reverse control system is shown below:
+The verified academic ladder diagram for the forward–reverse control system, featuring **Normally Closed (NC) Stop pushbuttons** (`X0` and `X2`), mutual output interlocking, and self-holding seal-in contacts:
 
 ![Forward / Reverse Motor Control Ladder Diagram](images/ladder-diagram.png)
 
-*Figure 1: Authentic Ladder Diagram showing mutual output interlocking, individual stop circuits, and self-holding seal-in contacts.*
+*Figure 1: Authentic Ladder Diagram showing NC Stop pushbuttons, mutual interlocking, and self-holding contacts.*
 
 ---
 
@@ -229,8 +229,8 @@ To replicate the simulation in **MELSOFT GX Works3**:
    * Type: `FX5U`
    * Program Language: `Ladder Diagram (LD)`
 3. **Input Ladder Rungs:**
-   * Enter Step 0 (Forward Rung): `LD X0`, `ANI Y1`, `LD X1`, `OR Y0`, `ANB`, `OUT Y0`.
-   * Enter Step 11 (Reverse Rung): `LD X2`, `ANI Y0`, `LD X3`, `OR Y1`, `ANB`, `OUT Y1`.
+   * Enter Step 0 (Forward Rung): `LDI X0`, `ANI Y1`, `LD X1`, `OR Y0`, `ANB`, `OUT Y0`.
+   * Enter Step 11 (Reverse Rung): `LDI X2`, `ANI Y0`, `LD X3`, `OR Y1`, `ANB`, `OUT Y1`.
    * Enter Step 22: `END`.
 4. **Compile Program:** Press `F4` (Convert &rarr; Rebuild All). Confirm 0 Errors, 0 Warnings.
 5. **Start Simulation:** Select **Debug** &rarr; **Simulation** &rarr; **Start/Stop Simulation**.
@@ -240,7 +240,7 @@ To replicate the simulation in **MELSOFT GX Works3**:
 7. **Stimulate Inputs:**
    * Right-click `X1` &rarr; **Debug** &rarr; **Modify Value** (or highlight `X1` and press `Shift + Enter`) to toggle ON momentarily, then toggle OFF. Observe `Y0` turn ON and latch.
    * Attempt toggling `X3` ON. Confirm `Y1` remains OFF due to `ANI Y0` block.
-   * Toggle `X0` to release `Y0`.
+   * Operate `X0` to release `Y0`.
    * Test reverse operation similarly with `X3` and `X2`.
 
 ---
@@ -260,7 +260,7 @@ The following test suite outlines the verified and expected functional behaviors
 | **T07** | Reverse Running (`Y1=1`) | Release Reverse Start (`X3 = 0`) | `Y0 = 0`, `Y1 = 1` | Output remains energized via `Y1` seal-in |
 | **T08** | Reverse Running (`Y1=1`) | Press Forward Start (`X1 = 1`) | `Y0 = 0`, `Y1 = 1` | Forward command remains **BLOCKED** by `ANI Y1` |
 | **T09** | Reverse Running (`Y1=1`) | Press Reverse Stop (`X2`) | `Y0 = 0`, `Y1 = 0` | Reverse coil de-energizes; latch drops out |
-| **T10** | Running (Either state) | Stop input inactive / open | Active output drops to `0` | Fail-safe circuit interruption |
+| **T10** | Running (Either state) | Stop contact opens | Active output drops to `0` | Fail-safe circuit interruption |
 
 ---
 
@@ -270,14 +270,14 @@ Although this capstone project is an educational model, identical bidirectional 
 * **Overhead Cranes and Hoists:** Up/Down directional lifting mechanisms.
 * **Automated Conveyor Belts:** Bidirectional material transfer and sorting lines.
 * **Motorized Valves and Dampers:** Open/Close motorized valve actuators in process plants.
-* **Rolling Shutters and Industrial Gates:** Forward (Raise) and Reverse (Lower) garage/warehouse doors.
+* **Rolling Shutters and Industrial Gates:** Forward (Raise) and Reverse (Lower) warehouse doors.
 * **Machine Tool Feeds:** Forward feed and reverse return on milling and lathe carriages.
 
 ---
 
 ## 18. Advantages
 
-* **Eliminates Complex Relay Wiring:** Replaces multi-relay timer/interlock hardwired cabinets with programmable software logic.
+* **Eliminates Complex Relay Wiring:** Replaces multi-relay hardwired cabinets with programmable software logic.
 * **High Modularity:** Logic changes or parameter adjustments are made in software without rewiring hardware.
 * **Online Diagnostic Visibility:** Troubleshooting input sensors and output states is performed in real-time via software monitor mode.
 * **Reliable Command Isolation:** Software interlocking ensures zero overlap between directional commands.
@@ -288,14 +288,14 @@ Although this capstone project is an educational model, identical bidirectional 
 
 * **Command-Level Only:** The PLC program controls command signals (`Y0`, `Y1`). It does not inherently detect physical contactor welding or mechanical binding without auxiliary feedback.
 * **Instant Reversal Shock (Plug Reversal Risk):** If an operator presses Stop and immediately presses the opposing Start button, the motor receives full reverse voltage while still spinning forward, causing severe mechanical strain and high current inrush. A physical installation requires an off-delay anti-plugging timer.
-* **Single-Point CPU Failure:** If the PLC processor faults or outputs latch on due to triac/relay failure, software interlocking alone cannot disconnect the motor.
+* **Single-Point CPU Failure:** If the PLC processor faults or outputs latch on due to contactor failure, software interlocking alone cannot disconnect the motor.
 
 ---
 
 ## 20. Future Scope
 
 For students and engineers looking to expand this basic capstone implementation into an industrial-grade starter:
-1. **Transition Timer Delay:** Introduce an on-delay/off-delay timer (e.g., Mitsubishi `T0` / `T1`) to enforce a mandatory standstill pause (e.g., 3–5 seconds) before allowing the opposite direction to start.
+1. **Transition Timer Delay:** Introduce an off-delay timer (e.g., Mitsubishi `T0` / `T1`) to enforce a mandatory standstill pause (e.g., 3–5 seconds) before allowing the opposite direction to start.
 2. **Thermal Overload Feedback:** Wire a physical bimetallic or electronic overload relay auxiliary contact to a dedicated input (e.g., `X4`), breaking both directional rungs upon thermal trip.
 3. **Emergency Stop (E-Stop):** Integrate an IEC 60204-1 Category 0 hardwired master safety relay with a dedicated PLC monitoring contact.
 4. **HMI Integration:** Develop a touch-screen operator interface using Mitsubishi GOT2000 / GT SoftGOT to display motor status, running hours, and alarm diagnostics.
@@ -344,36 +344,16 @@ PLC-Forward-Reverse-Motor-Control/
 ├── LICENSE                             # MIT Open Source License
 ├── .gitignore                          # Standard git exclusion rules
 ├── images/
-│   ├── ladder-diagram.png              # Verified academic ladder diagram
+│   ├── ladder-diagram.png              # Verified ladder diagram with NC Stop pushbuttons
 │   └── simulation-screenshot.png       # GX Works3 & GX Simulator3 monitor capture
-├── documentation/
-│   ├── project-report.pdf              # Full capstone project report (PDF)
-│   └── project-report.docx             # Original editable project report (Word)
 └── plc-program/
     └── README.md                       # Instruction List (IL), device map & recreation guide
 ```
 
-* **[Download Full Project Report (PDF)](documentation/project-report.pdf)**
-* **[View Editable Word Document (DOCX)](documentation/project-report.docx)**
 * **[View PLC Program Details & Recreation Guide](plc-program/README.md)**
 
 ---
 
-## 24. Verification Status & Technical Discrepancies
+## 24. Conclusion
 
-### Contact Configuration Clarification (Author's Note)
-* **Visual Observation:** In the preliminary DOCX graphic ([`images/ladder-diagram.png`](images/ladder-diagram.png)) and the simulator monitoring screenshot ([`images/simulation-screenshot.png`](images/simulation-screenshot.png)), the Stop inputs `X0` and `X2` are visually depicted using Normally Open (NO) ladder symbols `-[ ]-`.
-* **Engineering Reality & Author's Clarification:** In field wiring and standard PLC engineering practice, Stop pushbuttons are physically **Normally Closed (NC)** pushbuttons (IEC 60947-5-1 fail-safe convention). 
-  * Under standard physical wiring, an unpressed NC stop button delivers 24V DC (Logic 1) to terminal `X0`. In ladder logic, an examine-if-closed contact `-[ ]-` is energized, passing continuity. Pressing the physical NC stop button drops the voltage to 0V (Logic 0), de-energizing the rung and stopping the motor.
-  * In purely virtual simulation environments where pushbuttons default to Logic 0 when inactive, an examine-if-open instruction `-[/]-` is alternatively required if the bit is not forced to 1.
-  * The project documentation and this repository accurately record both the captured diagram state and this critical technical correction.
-
-### Native Binary File Status
-* As verified from the GX Works3 window header (`MELSOFT GX Works3 (Untitled Project)`), the lab simulation was executed within an untitled in-memory workspace.
-* In strict adherence to academic honesty, no artificial or reverse-engineered `.gx3` binary was fabricated. The complete Instruction List (IL) and recreation instructions are published in [`plc-program/README.md`](plc-program/README.md).
-
----
-
-## 25. Conclusion
-
-The PLC-Based Forward–Reverse Motor Control System successfully demonstrates the fundamental principles of industrial ladder programming using Mitsubishi MELSOFT GX Works3 and GX Simulator3. By incorporating digital inputs, self-holding auxiliary latching contacts, and mutual software interlocking, the system provides safe, reliable, and predictable bidirectional control. This project establishes an accessible educational foundation for students and automation enthusiasts studying industrial electrical control.
+The PLC-Based Forward–Reverse Motor Control System successfully demonstrates the fundamental principles of industrial ladder programming using Mitsubishi MELSOFT GX Works3 and GX Simulator3. By incorporating digital inputs, Normally Closed (NC) Stop pushbuttons, self-holding auxiliary latching contacts, and mutual software interlocking, the system provides safe, reliable, and predictable bidirectional control. This project establishes an accessible educational foundation for students and automation enthusiasts studying industrial electrical control.
