@@ -329,7 +329,8 @@ For students and engineers looking to expand this basic capstone implementation 
 * **Head of Department:** Dr. Md. Immadudin
 * **Principal:** Dr. Kamal Shah
 * **Student Project Team:**
-  * **Shubham Agre** [EU1247019]
+  * **[Shubham Agre](https://github.com/ShubhamAgre28)** [EU1247019] &mdash; *Repository Maintainer & Project Lead*  
+    <a href="https://github.com/ShubhamAgre28"><img src="https://github.com/ShubhamAgre28.png" width="44" height="44" alt="Shubham Agre" style="border-radius:50%; vertical-align:middle; border:2px solid #3B82F6;" /></a>
   * **Himanshu Chouhan** [EU1247043]
   * **Prashant Yadav** [EU1247060]
   * **Roshan Jha** [EU1247018]
